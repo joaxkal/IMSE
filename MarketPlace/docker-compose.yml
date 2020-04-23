@@ -1,0 +1,38 @@
+version: '3.6'
+
+services:
+  #change these commented blocks to add your chosen database images as containers to your project
+
+  sql:
+    image: mysql:5.7
+    container_name: sql
+    restart: always
+    environment:
+      - MYSQL_USER=user
+      - MYSQL_PASSWORD=password
+      - MYSQL_ROOT_PASSWORD=password
+      - MYSQL_DATABASE=imse_sql_db
+      - MYSQL_ALLOW_EMPTY_PASSWORD=yes
+    ports:
+      - "3306:3306"
+
+  # mongo:
+  #   image: mongo
+  #   container_name: mongo
+  #   environment:
+  #     MONGO_INITDB_ROOT_USERNAME: user
+  #     MONGO_INITDB_ROOT_PASSWORD: password
+  #     MONGO_INITDB_DATABASE: imse_mongo_db
+  #   ports:
+  #     - "27017:27017"
+
+  api:
+    #this tells docker where to look for the Dockerfile to build the image
+    build: ./api 
+    #name of your container and also the DNS name (nginx will proxy pass to this container from localhost:8000 when using a browser or Postman)
+    container_name: api 
+    restart: always
+    ports:
+      - "80:5000"
+    depends_on:
+      - sql
