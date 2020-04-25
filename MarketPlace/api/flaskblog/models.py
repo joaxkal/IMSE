@@ -15,6 +15,8 @@ class User(db.Model, UserMixin):
     image_file = db.Column(db.String(20), nullable=False, default='default.jpg')
     password = db.Column(db.String(60), nullable=False)
     posts = db.relationship('Post', backref='author', lazy=True)
+    location_id = db.Column(db.Integer, db.ForeignKey('location.postal_code'), nullable=True)
+    phone = db.Column(db.String(13), nullable=True)
 
     def get_reset_token(self, expires_sec=1800):
         s = Serializer(app.config['SECRET_KEY'], expires_sec)
@@ -45,7 +47,6 @@ class Post(db.Model):
     date_posted = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     content = db.Column(db.Text, nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    #category_id = db.Column(db.Integer, db.ForeignKey('category.id'), nullable=False)
     location_id = db.Column(db.Integer, db.ForeignKey('location.postal_code'), nullable=False)
     category = db.relationship(
         "Category",
@@ -65,8 +66,10 @@ class Category(db.Model):
         secondary=cat_association_table,
         back_populates="category")
 
+    def  __str__ (self):
+        return str(self.name) +' - ' + str(self.description)
     def __repr__(self):
-        return f"Category('{self.id},{self.name}')"
+        return f"Category('{self.name},{self.description}')"
 
 
 class Location(db.Model):
@@ -74,7 +77,8 @@ class Location(db.Model):
     city = db.Column(db.String(30), nullable=False)
     state = db.Column(db.String(30), nullable=False)
     posts = db.relationship('Post', backref='location', lazy=True)
+    users = db.relationship('User', backref='location', lazy=True)
 
 
     def __repr__(self):
-        return f"Category('{self.postal_code},{self.city},{self.state}')"
+        return f"Location('{self.postal_code},{self.city},{self.state}')"

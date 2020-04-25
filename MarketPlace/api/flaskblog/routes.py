@@ -5,9 +5,10 @@ from flask import render_template, url_for, flash, redirect, request, abort
 from flaskblog import app, db, bcrypt, mail
 from flaskblog.forms import (RegistrationForm, LoginForm, UpdateAccountForm,
                              PostForm, RequestResetForm, ResetPasswordForm)
-from flaskblog.models import User, Post, Location, Category
+from flaskblog.models import User, Post, Location, Category, cat_association_table
 from flask_login import login_user, current_user, logout_user, login_required
 from flask_mail import Message
+from sqlalchemy import func
 
 
 @app.route("/")
@@ -18,9 +19,28 @@ def home():
     return render_template('home.html', posts=posts)
 
 
-@app.route("/about")
+"""
+@app.route("/home/<string:category_name>")
+def home():
+    page = request.args.get('page', 1, type=int)
+    posts = Post.query.order_by(Post.date_posted.desc()).paginate(page=page, per_page=5)
+    return render_template('category_posts.html', posts=posts)
+"""
+
+@app.route("/report")
+# ELABORTE REPORTING
 def about():
-    return render_template('about.html', title='About')
+    q = db.session.query(func.count(Post.id).label('count'), User.username, Category.name) \
+        .join(User).join(cat_association_table).join(Category).join(Location,
+                                                                    Post.location_id == Location.postal_code).group_by(
+        User.username, Category.name).filter_by(postal_code=current_user.location.postal_code).subquery()
+
+    report = db.session.query(func.max(q.c.count), q.c.username, User.image_file, q.c.name, Location.city).join(
+        User, q.c.username == User.username).join(Location, current_user.location_id == Location.postal_code).group_by(
+        q.c.name). \
+        order_by(q.c.name.asc())
+
+    return render_template('report.html', title='Get Report!', report=report.all())
 
 
 @app.route("/register", methods=['GET', 'POST'])
@@ -30,7 +50,8 @@ def register():
     form = RegistrationForm()
     if form.validate_on_submit():
         hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
-        user = User(username=form.username.data, email=form.email.data, password=hashed_password)
+        user = User(username=form.username.data, email=form.email.data, location=form.location.data,
+                    password=hashed_password, phone=form.phone.data)
         db.session.add(user)
         db.session.commit()
         flash('Your account has been created! You are now able to log in', 'success')
@@ -84,12 +105,16 @@ def account():
             current_user.image_file = picture_file
         current_user.username = form.username.data
         current_user.email = form.email.data
+        current_user.phone = form.phone.data
+        current_user.location = form.location.data
         db.session.commit()
         flash('Your account has been updated!', 'success')
         return redirect(url_for('account'))
     elif request.method == 'GET':
         form.username.data = current_user.username
         form.email.data = current_user.email
+        form.phone.data = current_user.phone
+        form.location.data = current_user.location
     image_file = url_for('static', filename='profile_pics/' + current_user.image_file)
     return render_template('account.html', title='Account',
                            image_file=image_file, form=form)
@@ -101,8 +126,8 @@ def new_post():
     form = PostForm()
     if form.validate_on_submit():
         post = Post(title=form.title.data, content=form.content.data,
-                    location = form.location.data,
-                    category = form.category.data,
+                    location=form.location.data,
+                    category=form.category.data,
                     author=current_user)
         db.session.add(post)
         db.session.commit()
@@ -158,8 +183,8 @@ def delete_post(post_id):
 def user_posts(username):
     page = request.args.get('page', 1, type=int)
     user = User.query.filter_by(username=username).first_or_404()
-    posts = Post.query.filter_by(author=user)\
-        .order_by(Post.date_posted.desc())\
+    posts = Post.query.filter_by(author=user) \
+        .order_by(Post.date_posted.desc()) \
         .paginate(page=page, per_page=5)
     return render_template('user_posts.html', posts=posts, user=user)
 

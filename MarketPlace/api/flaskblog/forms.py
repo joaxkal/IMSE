@@ -13,12 +13,25 @@ class MultiCheckboxField(QuerySelectMultipleField):
     widget = widgets.ListWidget(prefix_label=False)
     option_widget = widgets.CheckboxInput()
 
+def loc_choices():
+    return Location.query.order_by(Location.city)
+
+def cat_choices():
+    return Category.query.order_by(Category.name)
+
+def get_pk(obj):
+    return str(obj)
 
 class RegistrationForm(FlaskForm):
     username = StringField('Username',
                            validators=[DataRequired(), Length(min=2, max=20)])
     email = StringField('Email',
                         validators=[DataRequired(), Email()])
+
+    phone = StringField('Phone', validators=[DataRequired()])
+
+    location = QuerySelectField('Location', query_factory=loc_choices, validators=[DataRequired()], get_pk=get_pk, get_label='city')
+
     password = PasswordField('Password', validators=[DataRequired()])
     confirm_password = PasswordField('Confirm Password',
                                      validators=[DataRequired(), EqualTo('password')])
@@ -34,6 +47,18 @@ class RegistrationForm(FlaskForm):
         if user:
             raise ValidationError('That email is taken. Please choose a different one.')
 
+    def validate_phone(form, phone):
+        if len(phone.data) > 16 or len(phone.data)<7:
+            raise ValidationError('Invalid phone number.')
+        try:
+            if phone.data[0] != '+':
+                int(phone.data[0])
+            for n in phone.data[1:]:
+                int(n)
+        except:
+            raise ValidationError('Invalid phone number.')
+
+
 
 class LoginForm(FlaskForm):
     email = StringField('Email',
@@ -48,7 +73,13 @@ class UpdateAccountForm(FlaskForm):
                            validators=[DataRequired(), Length(min=2, max=20)])
     email = StringField('Email',
                         validators=[DataRequired(), Email()])
+
+    phone = StringField('Phone', validators=[DataRequired()])
+
+    location = QuerySelectField('Location', query_factory=loc_choices, validators=[DataRequired()], get_pk=get_pk, get_label='city')
+
     picture = FileField('Update Profile Picture', validators=[FileAllowed(['jpg', 'png'])])
+
     submit = SubmitField('Update')
 
     def validate_username(self, username):
@@ -63,21 +94,26 @@ class UpdateAccountForm(FlaskForm):
             if user:
                 raise ValidationError('That email is taken. Please choose a different one.')
 
-def loc_choices():
-    return Location.query
+    def validate_phone(form, phone):
+        if len(phone.data) > 16 or len(phone.data)<7:
+            raise ValidationError('Invalid phone number.')
+        try:
+            if phone.data[0] != '+':
+                int(phone.data[0])
+            for n in phone.data[1:]:
+                int(n)
+        except:
+            raise ValidationError('Invalid phone number.')
 
-def cat_choices():
-    return Category.query
 
-def get_pk(obj):
-    return str(obj)
+
 
 class PostForm(FlaskForm):
 
     title = StringField('Title', validators=[DataRequired()])
     content = TextAreaField('Content', validators=[DataRequired()])
     location = QuerySelectField('Location', query_factory=loc_choices, validators=[DataRequired()], get_pk=get_pk, get_label='city')
-    category = MultiCheckboxField('Category', query_factory=cat_choices, validators=[DataRequired()], get_pk=get_pk, get_label='name')
+    category = MultiCheckboxField('Category', query_factory=cat_choices, validators=[DataRequired()], get_pk=get_pk)
     submit = SubmitField('Post')
 
 class RequestResetForm(FlaskForm):
