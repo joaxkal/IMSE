@@ -1,7 +1,55 @@
 {% extends "layout.html" %}
 {% block content %}
     {% if current_user.is_authenticated %}
-        <legend class="border-bottom mb-6">Search results</legend>
+                <legend class="border-bottom mb-6">Search for offers</legend>
+        <form method="POST" action="">
+            {{ form.csrf_token }}
+            <fieldset class="form-group" style="margin:0; padding: 0;">
+
+                <div class="form-group" style="margin:0; padding: 0;">
+                    {{ form.content(class="form-control", placeholder="Search") }}
+                </div>
+                <div class="form-row align-items-center" style="margin:0; padding: 0;">
+                <div class="col-sm-4 my-4">
+                    <div class="form-group">
+                        {{ form.location.label(class="form-control-label") }}
+                        {% if form.location.errors %}
+                            {{ form.location(class="form-control form-control is-invalid") }}
+                            <div class="invalid-feedback">
+                                {% for error in form.location.errors %}
+                                    <span>{{ error }}</span>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            {{ form.location(class="form-control form-control") }}
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-sm-8 my-8">
+                    <div class="form-group">
+                        {{ form.category.label(class="form-control-label") }}
+                        {% if form.category.errors %}
+                            {{ form.category(class="form-control form-control is-invalid") }}
+                            <div class="invalid-feedback">
+                                {% for error in form.category.errors %}
+                                    <span>{{ error }}</span>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            {{ form.category(class="form-control form-control") }}
+                        {% endif %}
+                    </div>
+                </div>
+                </div>
+            </fieldset>
+        <div class="text-center">
+            <div class="form-group">
+                {{ form.submit(class="btn-sm btn-outline-info btn-block") }}
+
+            </div>
+        </div>
+        </form>
+        <legend class="border-bottom mb-6" style="margin-top: 3rem">Search results</legend>
 
         {% for post in posts.items %}
             <article class="media content-section">
