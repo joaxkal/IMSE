@@ -136,6 +136,6 @@ class ResetPasswordForm(FlaskForm):
 
 class SearchForm(FlaskForm):
     content= StringField('Content')
-    location = QuerySelectField('Location', query_factory=loc_choices, get_pk=get_pk, get_label='city')
-    category = QuerySelectField('Category', query_factory=cat_choices, get_pk=get_pk)
+    location = QuerySelectField('Location', query_factory=loc_choices, get_pk=lambda x: x.postal_code, get_label='city',allow_blank=True)
+    category = QuerySelectField('Category', query_factory=cat_choices, get_pk=lambda x: x.id, allow_blank=True)
     submit = SubmitField('Search!')

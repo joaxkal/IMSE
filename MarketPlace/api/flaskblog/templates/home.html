@@ -2,8 +2,7 @@
 {% block content %}
     {% if current_user.is_authenticated %}
         <legend class="border-bottom mb-6">Search for offers</legend>
-        <form method="POST" action="">
-            {{ form.csrf_token }}
+        <form method="GET" action="{{ url_for('results') }}">
             <fieldset class="form-group" style="margin:0; padding: 0;">
 
                 <div class="form-group" style="margin:0; padding: 0;">

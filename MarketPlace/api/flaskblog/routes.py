@@ -8,44 +8,35 @@ from flaskblog.forms import (RegistrationForm, LoginForm, UpdateAccountForm,
 from flaskblog.models import User, Post, Location, Category, cat_association_table
 from flask_login import login_user, current_user, logout_user, login_required
 from flask_mail import Message
-from sqlalchemy import func
+from sqlalchemy import func, sql
 from sqlalchemy import or_
 
-
-@app.route("/", methods=["GET", "POST"])
-@app.route("/home", methods=["GET", "POST"])
+@app.route("/", methods=["GET"])
+@app.route("/home", methods=["GET"])
 def home():
     form = SearchForm()
-    if request.method == "POST" and form.validate_on_submit():
-        return redirect(
-            url_for('results', cont=form.content.data, cat=form.category.data.id,
-                    loc=form.location.data.postal_code))
-    else:
-        print('%%', form.errors)
     page = request.args.get('page', 1, type=int)
     posts = Post.query.order_by(Post.date_posted.desc()).paginate(page=page, per_page=5)
     return render_template('home.html', posts=posts, form=form)
 
 
-@app.route("/results/<cat>/<loc>", defaults={'cont': ''}, methods=["GET","POST"])
-@app.route("/results/<cat>/<loc>/<cont>", methods=["GET","POST"])
-def results(cont, cat, loc):
+@app.route("/results", methods=["GET"])
+def results():
     form = SearchForm()
-    if request.method == "POST" and form.validate_on_submit():
-        return redirect(
-            url_for('results', cont=form.content.data, cat=form.category.data.id,
-                    loc=form.location.data.postal_code))
-    else:
-        print('%%', form.errors)
-    form.content.data=cont
-    form.category.data=Category.query.filter_by(id=cat).first()
-    form.location.data=Location.query.filter_by(postal_code=loc).first()
-
+    form.content.data = request.args.get('content')
+    form.category.data = Category.query.filter_by(id=request.args.get('category')).first()
+    form.location.data = Location.query.filter_by(postal_code=request.args.get('location')).first()
     page = request.args.get('page', 1, type=int)
-    q = db.session.query(Post).filter(or_(Post.content.contains(cont), Post.title.contains(cont))).filter_by(
-        location_id=loc).join(cat_association_table).filter_by(category_id=cat).distinct().order_by(
+
+    loc_id = request.args.get('location')
+    cat_id = request.args.get('category')
+
+    q = db.session.query(Post).filter(or_(Post.content.contains(request.args.get('content')),
+                                          Post.title.contains(request.args.get('content')))).filter(
+        (Post.location_id == loc_id) if 'None' not in loc_id else sql.true()).join(cat_association_table).filter(
+        (cat_association_table.c.category_id==cat_id) if 'None' not in cat_id else sql.true()).distinct().order_by(
         Post.date_posted.desc()).paginate(page=page, per_page=5)
-    return render_template('search_results.html', posts=q, cont=cont, cat=cat, loc=loc, form=form)
+    return render_template('search_results.html', posts=q, form=form)
 
 
 @app.route("/report")
