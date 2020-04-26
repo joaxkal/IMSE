@@ -4,28 +4,38 @@ from PIL import Image
 from flask import render_template, url_for, flash, redirect, request, abort
 from flaskblog import app, db, bcrypt, mail
 from flaskblog.forms import (RegistrationForm, LoginForm, UpdateAccountForm,
-                             PostForm, RequestResetForm, ResetPasswordForm)
+                             PostForm, RequestResetForm, ResetPasswordForm, SearchForm)
 from flaskblog.models import User, Post, Location, Category, cat_association_table
 from flask_login import login_user, current_user, logout_user, login_required
 from flask_mail import Message
 from sqlalchemy import func
+from sqlalchemy import or_
 
 
 @app.route("/")
-@app.route("/home")
+@app.route("/home", methods=["GET", "POST"])
 def home():
+    form = SearchForm()
+    if request.method == "POST" and form.validate_on_submit():
+        return redirect(
+            url_for('results', cont=form.content.data, cat=form.category.data.id,
+                    loc=form.location.data.postal_code))
+    else:
+        print('%%', form.errors)
     page = request.args.get('page', 1, type=int)
     posts = Post.query.order_by(Post.date_posted.desc()).paginate(page=page, per_page=5)
-    return render_template('home.html', posts=posts)
+    return render_template('home.html', posts=posts, form=form)
 
 
-"""
-@app.route("/home/<string:category_name>")
-def home():
+@app.route("/results/<cat>/<loc>", defaults={'cont': ''}, methods=["GET"])
+@app.route("/results/<cat>/<loc>/<cont>", methods=["GET"])
+def results(cont, cat, loc):
     page = request.args.get('page', 1, type=int)
-    posts = Post.query.order_by(Post.date_posted.desc()).paginate(page=page, per_page=5)
-    return render_template('category_posts.html', posts=posts)
-"""
+    q = db.session.query(Post).filter(or_(Post.content.contains(cont), Post.title.contains(cont))).filter_by(
+        location_id=loc).join(cat_association_table).filter_by(category_id=cat).distinct().order_by(
+        Post.date_posted.desc()).paginate(page=page, per_page=5)
+    return render_template('search_results.html', posts=q, cont=cont, cat=cat, loc=loc)
+
 
 @app.route("/report")
 # ELABORTE REPORTING

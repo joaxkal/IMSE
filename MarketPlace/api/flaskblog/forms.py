@@ -132,3 +132,10 @@ class ResetPasswordForm(FlaskForm):
     confirm_password = PasswordField('Confirm Password',
                                      validators=[DataRequired(), EqualTo('password')])
     submit = SubmitField('Reset Password')
+
+
+class SearchForm(FlaskForm):
+    content= StringField('Content')
+    location = QuerySelectField('Location', query_factory=loc_choices, get_pk=get_pk, get_label='city')
+    category = QuerySelectField('Category', query_factory=cat_choices, get_pk=get_pk)
+    submit = SubmitField('Search!')
