@@ -28,6 +28,7 @@ class User(db.Model, UserMixin):
     image_file = db.Column(db.String(20), nullable=False, default='default.jpg')
     password = db.Column(db.String(60), nullable=False)
     posts = db.relationship('Post', backref='author', lazy=True)
+    comments=db.relationship('Comment', backref='comment_author', lazy=True)
     location_id = db.Column(db.Integer, db.ForeignKey('location.postal_code'), nullable=True)
     phone = db.Column(db.String(13), nullable=True)
     role_id = db.Column(db.Integer, db.ForeignKey('role.id'), nullable=False)

@@ -107,7 +107,7 @@ for cat, post in zip(cats, posts):
     cat.posts = [post]
     post.category = [cat]
     com1 = Comment(user_id=i % 4 + 1, content=mock_comment[j % 6], post_id=post.id)
-    com2 = Comment(user_id=i % 4 + 3, content=mock_comment[(j + 2 + j % 3) % 6], post_id=post.id)
+    com2 = Comment(user_id=i % 2 + 3, content=mock_comment[(j + 2 + j % 3) % 6], post_id=post.id)
     post.comments = [com1, com2]
 for cat in cats:
     db.session.add(cat)
