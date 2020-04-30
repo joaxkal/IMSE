@@ -8,8 +8,9 @@ from flaskblog.forms import (RegistrationForm, LoginForm, UpdateAccountForm,
 from flaskblog.models import User, Post, Location, Category, cat_association_table, Comment
 from flask_login import login_user, current_user, logout_user, login_required
 from flask_mail import Message
-from sqlalchemy import func, sql
+from sqlalchemy import func, sql, over
 from sqlalchemy import or_
+
 
 @app.route("/", methods=["GET"])
 @app.route("/home", methods=["GET"])
@@ -34,7 +35,7 @@ def results():
     q = db.session.query(Post).filter(or_(Post.content.contains(request.args.get('content')),
                                           Post.title.contains(request.args.get('content')))).filter(
         (Post.location_id == loc_id) if 'None' not in loc_id else sql.true()).join(cat_association_table).filter(
-        (cat_association_table.c.category_id==cat_id) if 'None' not in cat_id else sql.true()).distinct().order_by(
+        (cat_association_table.c.category_id == cat_id) if 'None' not in cat_id else sql.true()).distinct().order_by(
         Post.date_posted.desc()).paginate(page=page, per_page=5)
     return render_template('search_results.html', posts=q, form=form)
 
@@ -42,17 +43,37 @@ def results():
 @app.route("/report")
 # ELABORTE REPORTING
 def about():
-    q = db.session.query(func.count(Post.id).label('count'), User.username, Category.name) \
-        .join(User).join(cat_association_table).join(Category).join(Location,
-                                                                    Post.location_id == Location.postal_code).group_by(
-        User.username, Category.name).filter_by(postal_code=current_user.location.postal_code).subquery()
+    # count offers per user per category
+    q = db.session.query(func.count(Post.id).label('count'),
+                         User.username.label('username'),
+                         User.image_file.label('image_file'),
+                         Category.name.label('cat_name'),
+                         Location.city.label('city')).join(User,Post.user_id == User.id).join(
+        cat_association_table).join(Category).join(Location, Post.location_id == Location.postal_code).group_by(
+        User.username, User.image_file, Category.name, Location.city).filter_by(
+        postal_code=current_user.location.postal_code).subquery()
 
-    report = db.session.query(func.max(q.c.count), q.c.username, User.image_file, q.c.name, Location.city).join(
-        User, q.c.username == User.username).join(Location, current_user.location_id == Location.postal_code).group_by(
-        q.c.name). \
-        order_by(q.c.name.asc())
+    # get max_counts of offers per category
+    q2 = db.session.query(func.max(q.c.count).label('max_count'),
+                          q.c.cat_name.label('cat_name'),
+                          q.c.city.label('city')).group_by(q.c.cat_name, q.c.city).subquery()
+
+    # join user info to max_counts
+    q3 = db.session.query(q2.c.max_count.label('max_count'),
+                          q.c.username.label('username'),
+                          q.c.image_file.label('image_file'),
+                          q2.c.cat_name.label('cat_name'), q2.c.city.label('city')).join(q, q.c.count == q2.c.max_count).subquery()
+
+    # get only one user per category
+    q4 = db.session.query(q3.c.max_count.label('max_count'), q3.c.username.label('username'),
+                          q3.c.image_file.label('image_file'),
+                          q3.c.cat_name.label('cat_name'), q3.c.city.label('city')).subquery()
+
+    # final query
+    report = db.session.query(q4).order_by(q4.c.cat_name.asc())
 
     return render_template('report.html', title='Get Report!', report=report.all())
+    # return render_template('test.html', q=report)
 
 
 @app.route("/register", methods=['GET', 'POST'])
@@ -151,11 +172,11 @@ def new_post():
 
 @app.route("/post/<int:post_id>", methods=['GET', 'POST'])
 def post(post_id):
-    form=AddComment()
+    form = AddComment()
     if form.validate_on_submit():
         comment = Comment(content=form.content.data,
-                    comment_author=current_user,
-                    post_id=post_id
+                          comment_author=current_user,
+                          post_id=post_id
                           )
         db.session.add(comment)
         db.session.commit()
@@ -205,14 +226,14 @@ def delete_post(post_id):
 
 @app.route("/post/<int:post_id>/comment/<int:comment_id>/delete", methods=['POST'])
 @login_required
-def delete_comment(post_id,comment_id):
+def delete_comment(post_id, comment_id):
     comment = Comment.query.get_or_404(comment_id)
     if comment.comment_author != current_user:
         abort(403)
     db.session.delete(comment)
     db.session.commit()
     flash('Your comment has been deleted!', 'success')
-    return redirect(url_for('post',post_id=post_id))
+    return redirect(url_for('post', post_id=post_id))
 
 
 @app.route("/user/<string:username>")

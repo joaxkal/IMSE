@@ -10,9 +10,9 @@
                 <small class="text-muted">{{ post.date_posted.strftime('%Y-%m-%d') }}</small>
                 {% if post.author == current_user %}
                     <div>
-                        <a class="btn btn-secondary btn-sm mt-1 mb-1"
+                        <a class="btn btn-outline-secondary btn-sm mt-1 mb-1"
                            href="{{ url_for('update_post', post_id=post.id) }}">Update</a>
-                        <button type="button" class="btn btn-danger btn-sm m-1" data-toggle="modal"
+                        <button type="button" class="btn btn-outline-danger btn-sm m-1" data-toggle="modal"
                                 data-target="#deleteModal">Delete
                         </button>
                     </div>
@@ -33,13 +33,23 @@
             <a class="mr-2">phone number: {{ post.author.phone }}</a><br>
             <a class="mr-2">e-mail address: {{ post.author.email }}</a>
 
+
             <div class="media mt-3">
                 <div class="media-body" style="margin-top: 2rem">
                     <form method="POST" action="">
                         <fieldset class="form-group" style="margin:0; padding: 0;">
                             {{ form.hidden_tag() }}
-                            <div class="form-group" style="margin:0; padding: 0;">
-                                {{ form.content(class="form-control", placeholder="Add Comment") }}
+                            <div class="form-group">
+                                {% if form.content.errors %}
+                                    {{ form.content(class="form-control form-control-lg is-invalid", placeholder="Add Comment") }}
+                                    <div class="invalid-feedback">
+                                        {% for error in form.content.errors %}
+                                            <span>{{ error }}</span>
+                                        {% endfor %}
+                                    </div>
+                                {% else %}
+                                    {{ form.content(class="form-control form-control-lg", placeholder="Add Comment") }}
+                                {% endif %}
                             </div>
                         </fieldset>
                         <div class="text-center">
@@ -66,8 +76,9 @@
                                href="{{ url_for('user_posts', username=comment.comment_author.username) }}">{{ comment.comment_author.username }}</a>
                             <small class="text-muted">{{ comment.date_posted.strftime('%Y-%m-%d') }}</small>
                             {% if comment.comment_author == current_user %}
-                                <form action="{{ url_for('delete_comment', post_id=post.id,comment_id=comment.id) }}" method="POST">
-                                    <input class="btn btn-danger btn-xs m-1" style="float: right;" type="submit"
+                                <form action="{{ url_for('delete_comment', post_id=post.id,comment_id=comment.id) }}"
+                                      method="POST">
+                                    <input class="btn btn-outline-danger btn-xs m-1" style="float: right;" type="submit"
                                            value="Delete">
                                 </form>
                             {% endif %}
@@ -85,7 +96,7 @@
         <div class="modal-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="deleteModalLabel">Delete Comment?</h5>
+                    <h5 class="modal-title" id="deleteModalLabel">Delete Post?</h5>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
                     </button>

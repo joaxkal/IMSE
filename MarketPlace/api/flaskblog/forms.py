@@ -142,5 +142,5 @@ class SearchForm(FlaskForm):
 
 
 class AddComment(FlaskForm):
-    content= TextAreaField('Content')
+    content= TextAreaField('Content', validators=[DataRequired()])
     submit = SubmitField('Add!')
