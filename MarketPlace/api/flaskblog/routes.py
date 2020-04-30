@@ -9,7 +9,7 @@ from flaskblog.models import User, Post, Location, Category, cat_association_tab
 from flask_login import login_user, current_user, logout_user, login_required
 from flask_mail import Message
 from sqlalchemy import func, sql, over
-from sqlalchemy import or_
+from sqlalchemy import or_, and_
 
 
 @app.route("/", methods=["GET"])
@@ -43,37 +43,58 @@ def results():
 @app.route("/report")
 # ELABORTE REPORTING
 def about():
+    '''
+    MySQL5.x doesn't support window functions and DISTINCT ON.
+    In the report it was needed to get only one most active user in each category even
+    if two or more users had the same high number of posts (it should be random choice). This is the reason why the
+    final query is long and complicated. Finally we used group_concat and substring_index functions to get
+    the proper results. The role of each subquery step by step is described.
+    '''
     # count offers per user per category
     q = db.session.query(func.count(Post.id).label('count'),
                          User.username.label('username'),
                          User.image_file.label('image_file'),
                          Category.name.label('cat_name'),
-                         Location.city.label('city')).join(User,Post.user_id == User.id).join(
+                         Location.city.label('city')).join(User, Post.user_id == User.id).join(
         cat_association_table).join(Category).join(Location, Post.location_id == Location.postal_code).group_by(
         User.username, User.image_file, Category.name, Location.city).filter_by(
         postal_code=current_user.location.postal_code).subquery()
 
-    # get max_counts of offers per category
+    # get max number of posts in each category
     q2 = db.session.query(func.max(q.c.count).label('max_count'),
                           q.c.cat_name.label('cat_name'),
                           q.c.city.label('city')).group_by(q.c.cat_name, q.c.city).subquery()
 
-    # join user info to max_counts
-    q3 = db.session.query(q2.c.max_count.label('max_count'),
-                          q.c.username.label('username'),
-                          q.c.image_file.label('image_file'),
-                          q2.c.cat_name.label('cat_name'), q2.c.city.label('city')).join(q, q.c.count == q2.c.max_count).subquery()
+    # join users with max number of posts
+    q3 = db.session.query(q2.c.max_count.label('max_count'), q.c.username.label('username'),
+                          q2.c.cat_name.label('cat_name'), q2.c.city.label('city')).join(q, and_(
+        q.c.count == q2.c.max_count, q.c.cat_name == q2.c.cat_name, q.c.city == q2.c.city)).subquery()
 
-    # get only one user per category
-    q4 = db.session.query(q3.c.max_count.label('max_count'), q3.c.username.label('username'),
-                          q3.c.image_file.label('image_file'),
-                          q3.c.cat_name.label('cat_name'), q3.c.city.label('city')).subquery()
+    # concatenate users with max number of posts (in case there is more than one top user in category)
+    q4 = db.session.query(func.max(q3.c.max_count).label('max_count'),
+                          func.group_concat(q3.c.username).label('conc_users'),
+                          q3.c.cat_name.label('cat_name'),
+                          q3.c.city.label('city')).group_by(q3.c.cat_name, q3.c.city).subquery()
+
+    # get only one (random) user with max number of posts per category
+    q5 = db.session.query(q4.c.max_count.label('max_count'),
+                          func.substring_index(q4.c.conc_users, ",", 1).label('username'),
+                          q4.c.cat_name.label('cat_name'),
+                          q4.c.city.label('city')).subquery()
+
+    # join user info to max_counts
+    q6 = db.session.query(q5.c.max_count.label('max_count'),
+                          q5.c.username.label('username'),
+                          q.c.image_file.label('image_file'),
+                          q5.c.cat_name.label('cat_name'), q5.c.city.label('city')).join(q, and_(
+        q.c.count == q5.c.max_count, q.c.username == q5.c.username, q.c.cat_name == q5.c.cat_name,
+        q.c.city == q5.c.city)).subquery()
 
     # final query
-    report = db.session.query(q4).order_by(q4.c.cat_name.asc())
+    report = db.session.query(q6).order_by(q6.c.cat_name.asc())
 
-    return render_template('report.html', title='Get Report!', report=report.all())
-    # return render_template('test.html', q=report)
+    # return render_template('report.html', title='Get Report!', report=report.all())
+    return render_template('test.html', q=q6)
 
 
 @app.route("/register", methods=['GET', 'POST'])
