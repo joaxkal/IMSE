@@ -81,7 +81,7 @@ a.article-title:hover {
 
 
 ::marker {
-  color: green !important;
+  color: transparent !important;
   font-size: 1.2em;
 }
 .list-group-horizontal{
