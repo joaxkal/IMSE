@@ -10,7 +10,7 @@ from wtforms.ext.sqlalchemy.fields import QuerySelectMultipleField
 
 
 class MultiCheckboxField(QuerySelectMultipleField):
-    widget = widgets.ListWidget(prefix_label=False)
+    widget = widgets.ListWidget(html_tag='ul', prefix_label=False)
     option_widget = widgets.CheckboxInput()
 
 def loc_choices():

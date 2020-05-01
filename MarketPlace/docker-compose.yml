@@ -4,17 +4,15 @@ services:
   #change these commented blocks to add your chosen database images as containers to your project
 
   sql:
-    image: mysql:5.7.29
+    image: postgres
     container_name: sql
     restart: always
     environment:
-      - MYSQL_USER=user
-      - MYSQL_PASSWORD=password
-      - MYSQL_ROOT_PASSWORD=password
-      - MYSQL_DATABASE=imse_sql_db
-      - MYSQL_ALLOW_EMPTY_PASSWORD=yes
+      - POSTGRES_USER=user
+      - POSTGRS_PASSWORD=password
+      - POSTGRES_DB=imse_sql_db
     ports:
-      - "3306:3306"
+      - "5432:5432"
 
   # mongo:
   #   image: mongo

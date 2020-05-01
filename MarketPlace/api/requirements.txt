@@ -9,5 +9,4 @@ Pillow == 5.3.0
 WTForms == 2.1
 itsdangerous == 0.24
 werkzeug==0.16.1
-flask-mysql
-mysqlclient
+psycopg2

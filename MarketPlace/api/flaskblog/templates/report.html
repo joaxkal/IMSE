@@ -12,7 +12,7 @@
 
                 <article class="media content-section">
                     <img class="rounded-circle article-img"
-                         src="{{ url_for('static', filename='profile_pics/' + "default.jpg") }}">
+                         src="{{ url_for('static', filename='profile_pics/' + r.image_file) }}">
                     <div class="media-body">
                         <div class="article-metadata">
                             <a class="mr-2" href="{{ url_for('user_posts', username=r.username) }}">{{ r.username }}</a>
@@ -20,11 +20,11 @@
 
                         {% if r.max_count == 1 %}
                             <p>
-                                <b>{{ r.username }}</b> has posted <b>{{ r.max_count }}</b> offer in <b>{{ r.cat_name}}</b> category in {{ r.city }}!
+                                <b>{{ r.username }}</b> has posted <b>{{ r.max_count }}</b> offer in <b>{{ r.cat_name}}</b> category!
                             </p>
                         {% else %}
                             <p>
-                                <b>{{ r.username }}</b> has posted <b>{{ r.max_count }}</b> offers in <b>{{ r.cat_name }}</b> category in {{ r.city }}!
+                                <b>{{ r.username }}</b> has posted <b>{{ r.max_count }}</b> offers in <b>{{ r.cat_name }}</b> category!
                             </p>
                         {% endif %}
                     </div>

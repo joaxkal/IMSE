@@ -1,10 +1,10 @@
 #!/bin/sh
 
-echo "Waiting for MYSQL..."
+echo "Waiting for POSTGRESQL..."
 
 sleep 1
 
-echo "MySQL started"
+echo "POSTGRESQL started"
 
 
 python /app/fill_db.py

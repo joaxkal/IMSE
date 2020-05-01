@@ -24,32 +24,36 @@ def home():
 @app.route("/results", methods=["GET"])
 def results():
     form = SearchForm()
-    form.content.data = request.args.get('content')
-    form.category.data = Category.query.filter_by(id=request.args.get('category')).first()
-    form.location.data = Location.query.filter_by(postal_code=request.args.get('location')).first()
+
+    content = request.args.get('content')
+    cat = request.args.get('category')
+    loc = request.args.get('location')
+
+    if cat is None:
+        cat = 'None'
+    if loc is None:
+        loc = 'None'
+
+    form.content.data = content
+    form.category.data = Category.query.filter(
+        (Category.id == cat) if 'None' not in cat else sql.false()).first()
+    form.location.data = Location.query.filter(
+        (Location.postal_code == loc) if 'None' not in loc else sql.false()).first()
+
     page = request.args.get('page', 1, type=int)
 
-    loc_id = request.args.get('location')
-    cat_id = request.args.get('category')
-
-    q = db.session.query(Post).filter(or_(Post.content.contains(request.args.get('content')),
-                                          Post.title.contains(request.args.get('content')))).filter(
-        (Post.location_id == loc_id) if 'None' not in loc_id else sql.true()).join(cat_association_table).filter(
-        (cat_association_table.c.category_id == cat_id) if 'None' not in cat_id else sql.true()).distinct().order_by(
+    q = db.session.query(Post).filter(or_(func.lower(Post.content).contains(func.lower(content)),
+                                          func.lower(Post.title).contains(func.lower(content)))).filter(
+        (Post.location_id == loc) if 'None' not in loc else sql.true()).join(cat_association_table).filter(
+        (cat_association_table.c.category_id == cat) if 'None' not in cat else sql.true()).distinct().order_by(
         Post.date_posted.desc()).paginate(page=page, per_page=5)
-    return render_template('search_results.html', posts=q, form=form)
+    return render_template('search_results.html', posts=q, form=form, content=content, location=loc, category=cat,
+                           page=page)
 
 
 @app.route("/report")
 # ELABORTE REPORTING
 def about():
-    '''
-    MySQL5.x doesn't support window functions and DISTINCT ON.
-    In the report it was needed to get only one most active user in each category even
-    if two or more users had the same high number of posts (it should be random choice). This is the reason why the
-    final query is long and complicated. Finally we used group_concat and substring_index functions to get
-    the proper results. The role of each subquery step by step is described.
-    '''
     # count offers per user per category
     q = db.session.query(func.count(Post.id).label('count'),
                          User.username.label('username'),
@@ -65,36 +69,22 @@ def about():
                           q.c.cat_name.label('cat_name'),
                           q.c.city.label('city')).group_by(q.c.cat_name, q.c.city).subquery()
 
-    # join users with max number of posts
+    # join users with max number of posts and select one per each category
     q3 = db.session.query(q2.c.max_count.label('max_count'), q.c.username.label('username'),
                           q2.c.cat_name.label('cat_name'), q2.c.city.label('city')).join(q, and_(
-        q.c.count == q2.c.max_count, q.c.cat_name == q2.c.cat_name, q.c.city == q2.c.city)).subquery()
+        q.c.count == q2.c.max_count, q.c.cat_name == q2.c.cat_name, q.c.city == q2.c.city)).distinct(
+        q2.c.cat_name).subquery()
 
-    # concatenate users with max number of posts (in case there is more than one top user in category)
-    q4 = db.session.query(func.max(q3.c.max_count).label('max_count'),
-                          func.group_concat(q3.c.username).label('conc_users'),
-                          q3.c.cat_name.label('cat_name'),
-                          q3.c.city.label('city')).group_by(q3.c.cat_name, q3.c.city).subquery()
+    # final query -join user image  and returns max_counts per user per category
+    report = db.session.query(q3.c.max_count.label('max_count'),
+                              q3.c.username.label('username'),
+                              q.c.image_file.label('image_file'),
+                              q3.c.cat_name.label('cat_name'), q3.c.city.label('city')).join(q, and_(
+        q.c.count == q3.c.max_count, q.c.username == q3.c.username, q.c.cat_name == q3.c.cat_name,
+        q.c.city == q3.c.city)).order_by(q3.c.cat_name.asc())
 
-    # get only one (random) user with max number of posts per category
-    q5 = db.session.query(q4.c.max_count.label('max_count'),
-                          func.substring_index(q4.c.conc_users, ",", 1).label('username'),
-                          q4.c.cat_name.label('cat_name'),
-                          q4.c.city.label('city')).subquery()
-
-    # join user info to max_counts
-    q6 = db.session.query(q5.c.max_count.label('max_count'),
-                          q5.c.username.label('username'),
-                          q.c.image_file.label('image_file'),
-                          q5.c.cat_name.label('cat_name'), q5.c.city.label('city')).join(q, and_(
-        q.c.count == q5.c.max_count, q.c.username == q5.c.username, q.c.cat_name == q5.c.cat_name,
-        q.c.city == q5.c.city)).subquery()
-
-    # final query
-    report = db.session.query(q6).order_by(q6.c.cat_name.asc())
-
-    # return render_template('report.html', title='Get Report!', report=report.all())
-    return render_template('test.html', q=q6)
+    return render_template('report.html', title='Get Report!', report=report.all())
+    # return render_template('test.html', q=q4)
 
 
 @app.route("/register", methods=['GET', 'POST'])
