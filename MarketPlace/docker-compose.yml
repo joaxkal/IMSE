@@ -9,7 +9,7 @@ services:
     restart: always
     environment:
       - POSTGRES_USER=user
-      - POSTGRS_PASSWORD=password
+      - POSTGRES_PASSWORD=password
       - POSTGRES_DB=imse_sql_db
     ports:
       - "5432:5432"
