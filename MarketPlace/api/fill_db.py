@@ -1,6 +1,6 @@
-from flaskblog import db
-from flaskblog.models import *
-from flaskblog import bcrypt
+from marketplace import db
+from marketplace.models import *
+from marketplace import bcrypt
 
 print(db)
 db.drop_all()

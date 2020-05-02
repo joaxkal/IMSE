@@ -1,0 +1,41 @@
+{% extends "layout.html" %}
+{% block content %}
+    {% if report|length==0 %}
+        <h2 class="text-center">Sorry, we have no suggestions for you now. <br/>Come back later!</h2>
+    {% else %}
+        <legend class="border-bottom mb-4">Top offer posters in {{ report[0].city }}</legend>
+        {% if current_user.is_authenticated %}
+            {% for r in report %}
+                <div class="my-class alert alert-secondary" role="alert">
+                    <b>{{ r.cat_name.upper() }}</b>
+                </div>
+
+                <article class="media content-section">
+                    <img class="rounded-circle article-img"
+                         src="{{ url_for('static', filename='profile_pics/' + r.image_file) }}">
+                    <div class="media-body">
+                        <div class="article-metadata">
+                            <a class="mr-2" href="{{ url_for('user_posts', username=r.username) }}">{{ r.username }}</a>
+                        </div>
+
+                        {% if r.max_count == 1 %}
+                            <p>
+                                <b>{{ r.username }}</b> has posted <b>{{ r.max_count }}</b> offer in
+                                <b>{{ r.cat_name }}</b> category in {{ r.city }}!
+                            </p>
+                        {% else %}
+                            <p>
+                                <b>{{ r.username }}</b> has posted <b>{{ r.max_count }}</b> offers in
+                                <b>{{ r.cat_name }}</b> category in {{ r.city }}!
+                            </p>
+                        {% endif %}
+                    </div>
+
+                </article>
+            {% endfor %}
+
+        {% else %}
+            <h3>Please log in to see report.</h3>
+        {% endif %}
+    {% endif %}
+{% endblock content %}
