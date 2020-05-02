@@ -31,7 +31,7 @@ class User(db.Model, UserMixin):
     comments=db.relationship('Comment', backref='comment_author', lazy=True)
     location_id = db.Column(db.Integer, db.ForeignKey('location.postal_code'), nullable=True)
     phone = db.Column(db.String(13), nullable=True)
-    role_id = db.Column(db.Integer, db.ForeignKey('role.id'), nullable=False)
+    role_id = db.Column(db.Integer, db.ForeignKey('role.id'), nullable=False, default=2)
     following = db.relationship(
         'User', lambda: user_following,
         primaryjoin=lambda: User.id == user_following.c.user_id,
