@@ -4,7 +4,7 @@ services:
   #change these commented blocks to add your chosen database images as containers to your project
 
   sql:
-    image: postgres
+    image: postgres:latest
     container_name: sql
     restart: always
     environment:

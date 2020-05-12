@@ -69,23 +69,16 @@ def about():
                           q.c.cat_name.label('cat_name'),
                           q.c.city.label('city')).group_by(q.c.cat_name, q.c.city).subquery()
 
-    # join users with max number of posts and select one per each category
-    q3 = db.session.query(q2.c.max_count.label('max_count'), q.c.username.label('username'),
-                          q2.c.cat_name.label('cat_name'), q2.c.city.label('city')).join(q, and_(
-        q.c.count == q2.c.max_count, q.c.cat_name == q2.c.cat_name, q.c.city == q2.c.city)).distinct(
-        q2.c.cat_name).subquery()
-
-    # final query -join user image  and returns max_counts per user per category
-    report = db.session.query(q3.c.max_count.label('max_count'),
-                              q3.c.username.label('username'),
+    # final query - join users with max number of posts and select one user per each category
+    report = db.session.query(q2.c.max_count.label('max_count'), q.c.username.label('username'),
                               q.c.image_file.label('image_file'),
-                              q3.c.cat_name.label('cat_name'), q3.c.city.label('city')).join(q, and_(
-        q.c.count == q3.c.max_count, q.c.username == q3.c.username, q.c.cat_name == q3.c.cat_name,
-        q.c.city == q3.c.city)).order_by(q3.c.cat_name.asc())
+                              q2.c.cat_name.label('cat_name'), q2.c.city.label('city')).join(q, and_(
+        q.c.count == q2.c.max_count, q.c.cat_name == q2.c.cat_name, q.c.city == q2.c.city)).distinct(
+        q2.c.cat_name).order_by(q2.c.cat_name.asc())
+
 
     return render_template('report.html', title='Get Report!', report=report.all())
-    # return render_template('test.html', q=q4)
-
+    #return render_template('test.html', q=report)
 
 @app.route("/register", methods=['GET', 'POST'])
 def register():
