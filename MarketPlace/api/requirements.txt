@@ -11,3 +11,4 @@ itsdangerous == 0.24
 werkzeug==0.16.1
 psycopg2
 pymongo
+Flask-PyMongo

@@ -2,7 +2,7 @@ import os
 import secrets
 from PIL import Image
 from flask import render_template, url_for, flash, redirect, request, abort
-from marketplace import app, db, bcrypt, mail
+from marketplace import app, db, m_db, bcrypt, mail
 from marketplace.forms import (RegistrationForm, LoginForm, UpdateAccountForm,
                              PostForm, RequestResetForm, ResetPasswordForm, SearchForm, AddComment)
 from marketplace.models import User, Post, Location, Category, cat_association_table, Comment
@@ -10,6 +10,18 @@ from flask_login import login_user, current_user, logout_user, login_required
 from flask_mail import Message
 from sqlalchemy import func, sql, over
 from sqlalchemy import or_, and_
+import pymongo
+
+@app.route("/home_mongo", methods=["GET"])
+def home_mongo():
+    form = SearchForm()
+    posts = m_db.posts.find({}).sort('date_posted',pymongo.DESCENDING)
+    posts = list(posts)
+    for post in posts:
+        post['author']=m_db.users.find_one({'id': post['user_id']})
+    return render_template('home_mongo.html', posts=posts, form=form)
+    #return render_template('test.html', q=posts)
+
 
 
 @app.route("/", methods=["GET"])
@@ -168,6 +180,27 @@ def new_post():
                     author=current_user)
         db.session.add(post)
         db.session.commit()
+        flash('Your post has been created!', 'success')
+        return redirect(url_for('home'))
+    return render_template('create_post.html', title='New Post',
+                           form=form, legend='New Post')
+
+
+record2dict = lambda r: {c.name: getattr(r, c.name) for c in r.__table__.columns}
+def query2dict(query_result):
+    # get query results (list of object) and turn them into list of dictionaires
+    return [record2dict(record) for record in query_result]
+
+@app.route("/post/new_mongo", methods=['GET', 'POST'])
+@login_required
+def new_post_mongo():
+    form = PostForm()
+    if form.validate_on_submit():
+        post = {'title':form.title.data, 'content':form.content.data,
+                    'location':record2dict(form.location.data),
+                    'category':query2dict(form.category.data),
+                    'user_id':current_user.c.id}
+        m_db.posts.insert_one(post)
         flash('Your post has been created!', 'success')
         return redirect(url_for('home'))
     return render_template('create_post.html', title='New Post',

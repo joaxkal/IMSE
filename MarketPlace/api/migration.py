@@ -1,20 +1,14 @@
 import pymongo
 from pymongo import MongoClient
-from marketplace import db
+from marketplace import db, m_db
 from marketplace.models import *
 from marketplace import bcrypt
 import sqlalchemy as sa
 import json
 from pprint import pprint
 
-# connetcion
-client = MongoClient('mongodb://localhost:27017/',
-                     username='user',
-                     password='password'
-                     )
-# clear db from last tests
-client.drop_database('nosql_database')
-m_db = client.nosql_database
+for c in m_db.list_collection_names():
+    m_db[c].drop()
 
 record2dict = lambda r: {c.name: getattr(r, c.name) for c in r.__table__.columns}
 
@@ -35,8 +29,6 @@ posts_data = query2dict(Post.query.all())
 roles_data = query2dict(Role.query.all())
 comments_data = query2dict(Comment.query.all())
 
-cat_association_data = db.session.query(cat_association_table).all()
-user_following_data = db.session.query(user_following).all()
 
 #creating collection in mongoDB
 users = m_db.users
@@ -73,5 +65,3 @@ for post_data in posts_data:
     posts.update_one({'id': post_id},
             {'$set': {'location': related_loc}})
 
-pprint(posts.find_one({}))
-# reference location by city

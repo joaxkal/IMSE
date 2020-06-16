@@ -1,4 +1,6 @@
 {% extends "layout.html" %}
 {% block content %}
-    <p>{{ q }}</p>
+    {% for e in q%}
+    <p>{{ e}}</p>
+    {% endfor %}
 {% endblock content %}
