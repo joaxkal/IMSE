@@ -73,7 +73,7 @@ roles.insert_many(roles_data)
 # reference categories, locations and roles on the N-side
 for post_data in posts_data:
     post_id = post_data['_id']
-    related_cat = [cat.id for cat in posts_cat_data[post_id]]
+    related_cat = [cat.name for cat in posts_cat_data[post_id]]
     related_loc = posts_loc_data[post_id]
     posts.update_one({'_id': post_id},
             {'$set': {'categories': related_cat,

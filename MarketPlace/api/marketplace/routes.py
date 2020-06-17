@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 import secrets
 from PIL import Image
 from flask import render_template, url_for, flash, redirect, request, abort
@@ -16,12 +17,13 @@ import pymongo
 def home_mongo():
     form = SearchForm()
     posts = m_db.posts.find({}).sort('date_posted',pymongo.DESCENDING)
-    posts = list(posts)
+    posts=list(posts)
     for post in posts:
-        post['author']=m_db.users.find_one({'id': post['user_id']})
+        post['id'] = post.pop('_id')
+        post['category']=[{'name': cat} for cat in post['categories']]
+        post['author']=m_db.users.find_one({'_id': post['user_id']})
     return render_template('home_mongo.html', posts=posts, form=form)
-    #return render_template('test.html', q=posts)
-
+    #return render_template('test.html', q=res)
 
 
 @app.route("/", methods=["GET"])
@@ -185,7 +187,6 @@ def new_post():
     return render_template('create_post.html', title='New Post',
                            form=form, legend='New Post')
 
-
 record2dict = lambda r: {c.name: getattr(r, c.name) for c in r.__table__.columns}
 def query2dict(query_result):
     # get query results (list of object) and turn them into list of dictionaires
@@ -196,13 +197,17 @@ def query2dict(query_result):
 def new_post_mongo():
     form = PostForm()
     if form.validate_on_submit():
-        post = {'title':form.title.data, 'content':form.content.data,
-                    'location':record2dict(form.location.data),
-                    'category':query2dict(form.category.data),
-                    'user_id':current_user.c.id}
+        loc_dict=record2dict(form.location.data)
+        cat_dict=query2dict(form.category.data)
+        post = {'title':form.title.data,
+                'content':form.content.data,
+                'location': {'city': loc_dict['city'],'postal_code': loc_dict['postal_code']},
+                'categories':[cat['name'] for cat in cat_dict],
+                'user_id':current_user.id,
+                'date_posted': datetime.now()}
         m_db.posts.insert_one(post)
         flash('Your post has been created!', 'success')
-        return redirect(url_for('home'))
+        return redirect(url_for('home_mongo'))
     return render_template('create_post.html', title='New Post',
                            form=form, legend='New Post')
 
