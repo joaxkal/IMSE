@@ -53,7 +53,10 @@ posts_cat_data= [(str(post.id),post.category) for post in posts_query]
 posts_cat_data=dict(posts_cat_data)
 posts_loc_data=[(str(post.id),post.location) for post in posts_query]
 posts_loc_data=dict(posts_loc_data)
-
+user_post_data=[(str(post.author.id), post.id) for post in posts_query]
+user_posts = defaultdict(list)
+for k, v in user_post_data:
+    user_posts[str(k)].append(str(v))
 comments_data=query2dict(Comment.query.all(), 'id')
 
 ## DATA INTO MONGO
@@ -91,6 +94,7 @@ for user in users_data:
     user_role=user['role_id']
     related_loc=users_loc_data[user_id]
     related_role=users_roles_data[user_id]
+    related_posts=user_posts.get(user_id,[])
     if user_id in user_following_data:
         related_users=user_following_data[user_id]
     else:
@@ -100,6 +104,7 @@ for user in users_data:
                           'location.city': related_loc.city,
                           'role_id':related_role.id,
                           'following':related_users,
+                          'post_ids':related_posts,
                           'role_id':str(user_role)},
                  '$unset':{'location_id':''}})
 

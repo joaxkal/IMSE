@@ -5,7 +5,7 @@ from PIL import Image
 from flask import render_template, url_for, flash, redirect, request, abort
 from marketplace import app, db, m_db, bcrypt, mail
 from marketplace.forms import (RegistrationForm, LoginForm, UpdateAccountForm,
-                             PostForm, RequestResetForm, ResetPasswordForm, SearchForm, AddComment)
+                               PostForm, RequestResetForm, ResetPasswordForm, SearchForm, AddComment)
 from marketplace.models import User, Post, Location, Category, cat_association_table, Comment
 from flask_login import login_user, current_user, logout_user, login_required
 from flask_mail import Message
@@ -14,17 +14,18 @@ from sqlalchemy import or_, and_
 import pymongo
 from bson.objectid import ObjectId
 
+
 @app.route("/home_mongo", methods=["GET"])
 def home_mongo():
     form = SearchForm()
-    posts = m_db.posts.find({}).sort('date_posted',pymongo.DESCENDING)
-    posts=list(posts)
+    posts = m_db.posts.find({}).sort('date_posted', pymongo.DESCENDING)
+    posts = list(posts)
     for post in posts:
         post['id'] = post.pop('_id')
-        post['category']=[{'name': cat} for cat in post['categories']]
-        post['author']=m_db.users.find_one({'_id': post['user_id']})
+        post['category'] = [{'name': cat} for cat in post['categories']]
+        post['author'] = m_db.users.find_one({'_id': post['user_id']})
     return render_template('home_mongo.html', posts=posts, form=form)
-    #return render_template('test.html', q=res)
+    # return render_template('test.html', q=res)
 
 
 @app.route("/", methods=["GET"])
@@ -91,44 +92,42 @@ def about():
         q.c.count == q2.c.max_count, q.c.cat_name == q2.c.cat_name, q.c.city == q2.c.city)).distinct(
         q2.c.cat_name).order_by(q2.c.cat_name.asc())
 
-
     return render_template('report.html', title='Get Report!', report=report.all())
-    #return render_template('test.html', q=report)
+    # return render_template('test.html', q=report)
 
 
 @app.route("/report_mongo")
 # ELABORTE REPORTING
 def about_mongo():
-
-    start_date = datetime.today() -  timedelta(30)
+    start_date = datetime.today() - timedelta(30)
     cu_location = str(current_user.location.postal_code)
     m_db.posts.aggregate([
-    {'$match': {"date_posted": {"$gte": start_date}, "location.postal_code":cu_location}},
-    {'$unwind': "$categories"},
-    {'$group': {'_id': {
-        'user': '$user_id',
-        'category': '$categories',
+        {'$match': {"date_posted": {"$gte": start_date}, "location.postal_code": cu_location}},
+        {'$unwind': "$categories"},
+        {'$group': {'_id': {
+            'user': '$user_id',
+            'category': '$categories',
 
-    },
-        "count": {"$sum": 1}}},
+        },
+            "count": {"$sum": 1}}},
 
-    {'$group': {'_id': {
+        {'$group': {'_id': {
             'category': '$_id.category'
         },
             "user": {"$first": '$_id.user'},
             "count": {"$max": '$count'}}},
-        { '$out': "results"}
+        {'$out': "results"}
     ])
 
     report = list(m_db.results.find({}))
     for result in report:
-         result['city'] = current_user.location.city
-         for k, v in m_db.users.find_one({'_id': result['user']}).items():
-              if k!='_id' and k!='password':
-                 result[k] = v
-         result['cat_name'] =  result['_id']['category']
+        result['city'] = current_user.location.city
+        for k, v in m_db.users.find_one({'_id': result['user']}).items():
+            if k != '_id' and k != 'password':
+                result[k] = v
+        result['cat_name'] = result['_id']['category']
     return render_template('report.html', title='Get Report!', report=report)
-    #return render_template('test.html', q=report)
+    # return render_template('test.html', q=report)
 
 
 @app.route("/register", methods=['GET', 'POST'])
@@ -224,27 +223,32 @@ def new_post():
     return render_template('create_post.html', title='New Post',
                            form=form, legend='New Post')
 
+
 record2dict = lambda r: {c.name: getattr(r, c.name) for c in r.__table__.columns}
+
+
 def query2dict(query_result):
     # get query results (list of object) and turn them into list of dictionaires
     return [record2dict(record) for record in query_result]
+
 
 @app.route("/post/new_mongo", methods=['GET', 'POST'])
 @login_required
 def new_post_mongo():
     form = PostForm()
     if form.validate_on_submit():
-        loc_dict=record2dict(form.location.data)
-        cat_dict=query2dict(form.category.data)
-        print(cat_dict)
-        post = {'_id':str(ObjectId()),
-                'title':form.title.data,
-                'content':form.content.data,
-                'location': {'city': loc_dict['city'],'postal_code': str(loc_dict['postal_code'])},
-                'categories':[cat['name'] for cat in cat_dict],
-                'user_id':str(current_user.id),
+        loc_dict = record2dict(form.location.data)
+        cat_dict = query2dict(form.category.data)
+        post = {'_id': str(ObjectId()),
+                'title': form.title.data,
+                'content': form.content.data,
+                'location': {'city': loc_dict['city'], 'postal_code': str(loc_dict['postal_code'])},
+                'categories': [cat['name'] for cat in cat_dict],
+                'user_id': str(current_user.id),
                 'date_posted': datetime.now()}
         m_db.posts.insert_one(post)
+        m_db.users.update_one({'_id': str(current_user.id)},
+                              {'$push': {'post_ids': post['_id']}})
         flash('Your post has been created!', 'success')
         return redirect(url_for('home_mongo'))
     return render_template('create_post.html', title='New Post',
@@ -266,31 +270,33 @@ def post(post_id):
     post = Post.query.get_or_404(post_id)
     return render_template('post.html', post=post, comments=post.comments, form=form)
 
+
 @app.route("/post_mongo/<post_id>", methods=['GET', 'POST'])
 def post_mongo(post_id):
     form = AddComment()
     if form.validate_on_submit():
-        comment = {'_id':str(ObjectId()),
-                    'content':form.content.data,
-                    'date_posted':datetime.now(),
-                    'user_id':str(current_user.id)}
+        comment = {'_id': str(ObjectId()),
+                   'content': form.content.data,
+                   'date_posted': datetime.now(),
+                   'user_id': str(current_user.id)}
         m_db.posts.update_one({'_id': post_id},
-                         {'$push': {'comments': comment}})
+                              {'$push': {'comments': comment}})
         flash('Your comment has been addeed!', 'success')
         return redirect(url_for('post_mongo', post_id=post_id))
 
-    post=m_db.posts.find_one({'_id': post_id})
+    post = m_db.posts.find_one({'_id': post_id})
     post['id'] = post.pop('_id')
     post['category'] = [{'name': cat} for cat in post['categories']]
     post['author'] = m_db.users.find_one({'_id': post['user_id']})
     if 'comments' in post.keys():
-        comments=post['comments']
+        comments = post['comments']
         for comment in comments:
             comment['comment_author'] = m_db.users.find_one({'_id': comment['user_id']})
     else:
-        comments=[]
+        comments = []
     return render_template('post.html', post=post, comments=comments, form=form)
-    #return render_template('test.html', q=[post])
+    # return render_template('test.html', q=[post])
+
 
 @app.route("/post/<int:post_id>/update", methods=['GET', 'POST'])
 @login_required
