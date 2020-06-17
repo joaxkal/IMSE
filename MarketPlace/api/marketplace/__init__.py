@@ -9,8 +9,7 @@ from pymongo import MongoClient
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = '5791628bb0b13ce0c676dfde280ba245'
-#app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://user:password@192.168.99.100:5432/imse_sql_db'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://user:password@localhost:5432/imse_sql_db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://user:password@192.168.99.100:5432/imse_sql_db'
 #app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://user:password@sql:5432/imse_sql_db'
 db = SQLAlchemy(app)
 
@@ -28,7 +27,7 @@ mail = Mail(app)
 
 #mongo stuff
 #client = MongoClient('mongodb://mongo:27017/', username='user', password='password')
-client = MongoClient('mongodb://localhost:27017/', username='user', password='password')
+client = MongoClient('mongodb://192.168.99.100:27017/', username='user', password='password')
 
 # clear db from last tests
 m_db = client.nosql_database
