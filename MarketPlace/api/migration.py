@@ -11,6 +11,7 @@ import datetime
 
 for c in m_db.list_collection_names():
     m_db[c].drop()
+print(m_db.list_collection_names())
 
 record2dict = lambda r, id_field: {(c.name if c.name!=id_field else '_id'):
                                        str(getattr(r, c.name)) if c.name==id_field else getattr(r, c.name)
@@ -110,13 +111,14 @@ for comment_data in comments_data:
     del comment_data['post_id'] #we don't need this in our mongo DB
     posts.update_one({'_id': post_id},
             {'$push': {'comments': comment_data}})
-## SET INDEX
 
-# #todo:
-# W postach
-# multi key na categories
-# normalny na locations
-# text na content i title
 
-#W userach
-# normalny na lcqtions?
+
+#INDEXES
+posts.create_index([('content', pymongo.TEXT), \
+                    ('title', pymongo.TEXT), \
+                    ('categories', pymongo.TEXT), \
+                    ('location.city', pymongo.TEXT)])
+
+users.create_indexes([pymongo.IndexModel([('following', pymongo.ASCENDING)]),
+                      pymongo.IndexModel([('location.city', pymongo.TEXT)]) ])
