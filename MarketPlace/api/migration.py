@@ -105,11 +105,11 @@ for user in users_data:
 
 #embed comments in post
 for comment_data in comments_data:
-    post_id = comment_data['post_id']
+    comment_data['user_id']=str(comment_data['user_id'])
+    post_id = str(comment_data['post_id'])
     del comment_data['post_id'] #we don't need this in our mongo DB
     posts.update_one({'_id': post_id},
             {'$push': {'comments': comment_data}})
-
 ## SET INDEX
 
 # #todo:

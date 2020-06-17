@@ -200,6 +200,7 @@ def new_post_mongo():
     if form.validate_on_submit():
         loc_dict=record2dict(form.location.data)
         cat_dict=query2dict(form.category.data)
+        print(cat_dict)
         post = {'_id':str(ObjectId()),
                 'title':form.title.data,
                 'content':form.content.data,
@@ -236,19 +237,20 @@ def post_mongo(post_id):
         comment = {'_id':str(ObjectId()),
                     'content':form.content.data,
                     'date_posted':datetime.now(),
-                    'comment_author':str(current_user.id)}
+                    'user_id':str(current_user.id)}
         m_db.posts.update_one({'_id': post_id},
                          {'$push': {'comments': comment}})
         flash('Your comment has been addeed!', 'success')
-        return redirect(url_for('post', post_id=post_id))
+        return redirect(url_for('post_mongo', post_id=post_id))
 
     post=m_db.posts.find_one({'_id': post_id})
     post['id'] = post.pop('_id')
-    post['id']=10000000
     post['category'] = [{'name': cat} for cat in post['categories']]
     post['author'] = m_db.users.find_one({'_id': post['user_id']})
     if 'comments' in post.keys():
-        comments=post.comments
+        comments=post['comments']
+        for comment in comments:
+            comment['comment_author'] = m_db.users.find_one({'_id': comment['user_id']})
     else:
         comments=[]
     return render_template('post.html', post=post, comments=comments, form=form)
@@ -278,7 +280,7 @@ def update_post(post_id):
                            form=form, legend='Update Post')
 
 
-@app.route("/post/<int:post_id>/delete", methods=['POST'])
+@app.route("/post/<post_id>/delete", methods=['POST'])
 @login_required
 def delete_post(post_id):
     post = Post.query.get_or_404(post_id)
