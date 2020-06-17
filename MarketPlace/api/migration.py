@@ -81,7 +81,7 @@ for post_data in posts_data:
     posts.update_one({'_id': post_id},
             {'$set': {'user_id': str(user_id),
                       'categories': related_cat,
-                      'location.postal_code':related_loc.postal_code,
+                      'location.postal_code':str(related_loc.postal_code),
                       'location.city':related_loc.city},
              '$unset':{'location_id':''}})
 

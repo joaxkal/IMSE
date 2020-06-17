@@ -1,5 +1,5 @@
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 import secrets
 from PIL import Image
 from flask import render_template, url_for, flash, redirect, request, abort
@@ -94,6 +94,42 @@ def about():
 
     return render_template('report.html', title='Get Report!', report=report.all())
     #return render_template('test.html', q=report)
+
+
+@app.route("/report_mongo")
+# ELABORTE REPORTING
+def about_mongo():
+
+    start_date = datetime.today() -  timedelta(30)
+    cu_location = str(current_user.location.postal_code)
+    m_db.posts.aggregate([
+    {'$match': {"date_posted": {"$gte": start_date}, "location.postal_code":cu_location}},
+    {'$unwind': "$categories"},
+    {'$group': {'_id': {
+        'user': '$user_id',
+        'category': '$categories',
+
+    },
+        "count": {"$sum": 1}}},
+
+    {'$group': {'_id': {
+            'category': '$_id.category'
+        },
+            "user": {"$first": '$_id.user'},
+            "count": {"$max": '$count'}}},
+        { '$out': "results"}
+    ])
+
+    report = list(m_db.results.find({}))
+    for result in report:
+         result['city'] = current_user.location.city
+         for k, v in m_db.users.find_one({'_id': result['user']}).items():
+              if k!='_id' and k!='password':
+                 result[k] = v
+         result['cat_name'] =  result['_id']['category']
+    return render_template('report.html', title='Get Report!', report=report)
+    #return render_template('test.html', q=report)
+
 
 @app.route("/register", methods=['GET', 'POST'])
 def register():
@@ -204,7 +240,7 @@ def new_post_mongo():
         post = {'_id':str(ObjectId()),
                 'title':form.title.data,
                 'content':form.content.data,
-                'location': {'city': loc_dict['city'],'postal_code': loc_dict['postal_code']},
+                'location': {'city': loc_dict['city'],'postal_code': str(loc_dict['postal_code'])},
                 'categories':[cat['name'] for cat in cat_dict],
                 'user_id':str(current_user.id),
                 'date_posted': datetime.now()}
