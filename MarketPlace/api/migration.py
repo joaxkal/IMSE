@@ -6,15 +6,15 @@ from marketplace import bcrypt
 import sqlalchemy as sa
 import json
 from pprint import pprint
-from itertools import groupby
-from operator import itemgetter
-
+from collections import defaultdict
+import datetime
 
 for c in m_db.list_collection_names():
     m_db[c].drop()
 
-record2dict = lambda r, id_field: \
-    {(c.name if c.name!=id_field else '_id'): getattr(r, c.name) for c in r.__table__.columns}
+record2dict = lambda r, id_field: {(c.name if c.name!=id_field else '_id'):
+                                       str(getattr(r, c.name)) if c.name==id_field else getattr(r, c.name)
+                                   for c in r.__table__.columns}
 
 def query2dict(query_result, id_field):
     # get query results (list of object) and turn them into list of dictionaires
@@ -37,18 +37,20 @@ roles_data = query2dict(Role.query.all(), 'id')
 # together with categories, locations and roles
 user_query=User.query.all()
 users_data = query2dict(user_query, 'id')
-users_loc_data = [(user.id, user.location) for user in user_query]
+users_loc_data = [(str(user.id), user.location) for user in user_query]
 users_loc_data=dict(users_loc_data)
-users_roles_data = [(user.id, user.role) for user in user_query]
+users_roles_data = [(str(user.id), user.role) for user in user_query]
 users_roles_data=dict(users_roles_data)
-user_following_data = db.session.query(user_following).all()
-user_following_data = dict([(k, list(list(zip(*g))[1])) for k, g in groupby(user_following_data, itemgetter(0))])
+user_following_data = defaultdict(list)
+for k, v in db.session.query(user_following).all():
+    user_following_data[str(k)].append(str(v))
+
 
 posts_query=Post.query.all()
 posts_data = query2dict(posts_query, 'id')
-posts_cat_data= [(post.id,post.category) for post in posts_query]
+posts_cat_data= [(str(post.id),post.category) for post in posts_query]
 posts_cat_data=dict(posts_cat_data)
-posts_loc_data=[(post.id,post.location) for post in posts_query]
+posts_loc_data=[(str(post.id),post.location) for post in posts_query]
 posts_loc_data=dict(posts_loc_data)
 
 comments_data=query2dict(Comment.query.all(), 'id')
@@ -73,16 +75,19 @@ roles.insert_many(roles_data)
 # reference categories, locations and roles on the N-side
 for post_data in posts_data:
     post_id = post_data['_id']
+    user_id=post_data['user_id']
     related_cat = [cat.name for cat in posts_cat_data[post_id]]
     related_loc = posts_loc_data[post_id]
     posts.update_one({'_id': post_id},
-            {'$set': {'categories': related_cat,
+            {'$set': {'user_id': str(user_id),
+                      'categories': related_cat,
                       'location.postal_code':related_loc.postal_code,
                       'location.city':related_loc.city},
              '$unset':{'location_id':''}})
 
 for user in users_data:
     user_id=user['_id']
+    user_role=user['role_id']
     related_loc=users_loc_data[user_id]
     related_role=users_roles_data[user_id]
     if user_id in user_following_data:
@@ -93,7 +98,8 @@ for user in users_data:
                 {'$set': {'location.postal_code':related_loc.postal_code,
                           'location.city': related_loc.city,
                           'role_id':related_role.id,
-                          'following':related_users},
+                          'following':related_users,
+                          'role_id':str(user_role)},
                  '$unset':{'location_id':''}})
 
 

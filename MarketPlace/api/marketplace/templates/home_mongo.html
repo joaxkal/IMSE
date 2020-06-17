@@ -61,7 +61,7 @@
                         <small class="text-muted">{{ post.date_posted.strftime('%Y-%m-%d') }}</small>
                     </div>
                     <h2><a class="article-title text-break"
-                           href="{{ url_for('home_mongo') }}">{{ post.title }}</a></h2>
+                           href="{{ url_for('post_mongo', post_id=post.id) }}">{{ post.title }}</a></h2>
                     <small>
                         <ul class="list-group-horizontal">
                             {% for cat in post.category %}
