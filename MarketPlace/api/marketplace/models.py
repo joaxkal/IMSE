@@ -15,8 +15,13 @@ def load_user(user_id):
     if len(user_id)<6:
         user = User.query.get(int(user_id))
     else:
-        user = UserDict(m_db.users.find_one({'_id':user_id}))
-        user['is_authenticated']=True
+        user = m_db.users.find_one({'_id':user_id})
+        if user:
+            user = UserDict(user)
+            user['is_authenticated']=True
+        else:
+            user = {'is_authenticated':False}
+            user = UserDict(user)
     return user
 
 cat_association_table = db.Table('cat_association', db.Model.metadata,

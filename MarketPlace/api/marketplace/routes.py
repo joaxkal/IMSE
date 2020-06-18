@@ -203,9 +203,10 @@ def login_mongo():
     if current_user.is_authenticated:
         return redirect(url_for('home'))
     form = LoginForm()
+    user = m_db.users.find_one({'email': form.email.data})
     if form.validate_on_submit():
-        user = UserDict(m_db.users.find_one({'email':form.email.data}))
         if user and bcrypt.check_password_hash(user['password'], form.password.data):
+            user = UserDict(user)
             user['is_active']=True
             user['is_authenticated']=True
             user['is_anonymous']=False
