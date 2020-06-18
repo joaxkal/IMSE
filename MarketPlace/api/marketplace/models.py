@@ -1,12 +1,23 @@
 from datetime import datetime
 from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
-from marketplace import db, login_manager, app
+from marketplace import db, login_manager, app, m_db
 from flask_login import UserMixin
+
+
+class UserDict(dict):
+    def __getattr__(self, name):
+        return self[name]
+    def get_id(self):
+        return self['_id']
 
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(int(user_id))
-
+    if len(user_id)<6:
+        user = User.query.get(int(user_id))
+    else:
+        user = UserDict(m_db.users.find_one({'_id':user_id}))
+        user['is_authenticated']=True
+    return user
 
 cat_association_table = db.Table('cat_association', db.Model.metadata,
     db.Column('post_id', db.Integer, db.ForeignKey('post.id')),

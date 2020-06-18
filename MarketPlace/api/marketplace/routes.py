@@ -15,6 +15,14 @@ import pymongo
 from bson.objectid import ObjectId
 
 
+
+record2dict = lambda r: {c.name: getattr(r, c.name) for c in r.__table__.columns}
+
+
+def query2dict(query_result):
+    # get query results (list of object) and turn them into list of dictionaires
+    return [record2dict(record) for record in query_result]
+
 @app.route("/home_mongo", methods=["GET"])
 def home_mongo():
     form = SearchForm()
@@ -145,6 +153,28 @@ def register():
         return redirect(url_for('login'))
     return render_template('register.html', title='Register', form=form)
 
+@app.route("/register_mongo", methods=['GET', 'POST'])
+def register_mongo():
+    if current_user.is_authenticated:
+        return redirect(url_for('home'))
+    form = RegistrationForm()
+    if form.validate_on_submit():
+        loc_dict = record2dict(form.location.data)
+        hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
+        user = {'_id':str(ObjectId()),
+                'username':form.username.data,
+                'email':form.email.data,
+                'location': {'city': loc_dict['city'], 'postal_code': str(loc_dict['postal_code'])},
+                'password':hashed_password,
+                'phone':form.phone.data,
+                'role_id':1,
+                'post_ids':[],
+                'following':[],
+                'image_file':'default.jpg'}
+        m_db.users.insert_one(user)
+        flash('Your account has been created! You are now able to log in', 'success')
+        return redirect(url_for('login'))
+    return render_template('register.html', title='Register', form=form)
 
 @app.route("/login", methods=['GET', 'POST'])
 def login():
@@ -161,6 +191,30 @@ def login():
             flash('Login Unsuccessful. Please check email and password', 'danger')
     return render_template('login.html', title='Login', form=form)
 
+
+class UserDict(dict):
+    def __getattr__(self, name):
+        return self[name]
+    def get_id(self):
+        return self['_id']
+
+@app.route("/login_mongo", methods=['GET', 'POST'])
+def login_mongo():
+    if current_user.is_authenticated:
+        return redirect(url_for('home'))
+    form = LoginForm()
+    if form.validate_on_submit():
+        user = UserDict(m_db.users.find_one({'email':form.email.data}))
+        if user and bcrypt.check_password_hash(user['password'], form.password.data):
+            user['is_active']=True
+            user['is_authenticated']=True
+            user['is_anonymous']=False
+            login_user(user, remember=form.remember.data)
+            next_page = request.args.get('next')
+            return redirect(next_page) if next_page else redirect(url_for('home'))
+        else:
+            flash('Login Unsuccessful. Please check email and password', 'danger')
+    return render_template('login.html', title='Login', form=form)
 
 @app.route("/logout")
 def logout():
@@ -224,14 +278,6 @@ def new_post():
                            form=form, legend='New Post')
 
 
-record2dict = lambda r: {c.name: getattr(r, c.name) for c in r.__table__.columns}
-
-
-def query2dict(query_result):
-    # get query results (list of object) and turn them into list of dictionaires
-    return [record2dict(record) for record in query_result]
-
-
 @app.route("/post/new_mongo", methods=['GET', 'POST'])
 @login_required
 def new_post_mongo():
@@ -244,10 +290,10 @@ def new_post_mongo():
                 'content': form.content.data,
                 'location': {'city': loc_dict['city'], 'postal_code': str(loc_dict['postal_code'])},
                 'categories': [cat['name'] for cat in cat_dict],
-                'user_id': str(current_user.id),
+                'user_id': str(current_user._id),
                 'date_posted': datetime.now()}
         m_db.posts.insert_one(post)
-        m_db.users.update_one({'_id': str(current_user.id)},
+        m_db.users.update_one({'_id': str(current_user._id)},
                               {'$push': {'post_ids': post['_id']}})
         flash('Your post has been created!', 'success')
         return redirect(url_for('home_mongo'))
