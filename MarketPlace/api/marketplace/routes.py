@@ -108,7 +108,7 @@ def about():
 # ELABORTE REPORTING
 def about_mongo():
     start_date = datetime.today() - timedelta(30)
-    cu_location = str(current_user.location.postal_code)
+    cu_location = str(current_user.location['postal_code'])
     m_db.posts.aggregate([
         {'$match': {"date_posted": {"$gte": start_date}, "location.postal_code": cu_location}},
         {'$unwind': "$categories"},
@@ -129,7 +129,7 @@ def about_mongo():
 
     report = list(m_db.results.find({}))
     for result in report:
-        result['city'] = current_user.location.city
+        result['city'] = current_user.location['city']
         for k, v in m_db.users.find_one({'_id': result['user']}).items():
             if k != '_id' and k != 'password':
                 result[k] = v
