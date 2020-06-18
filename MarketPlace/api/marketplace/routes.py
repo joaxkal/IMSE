@@ -150,7 +150,7 @@ def register():
         db.session.add(user)
         db.session.commit()
         flash('Your account has been created! You are now able to log in', 'success')
-        return redirect(url_for('login'))
+        return redirect(url_for('login_mongo'))
     return render_template('register.html', title='Register', form=form)
 
 @app.route("/register_mongo", methods=['GET', 'POST'])
@@ -211,7 +211,7 @@ def login_mongo():
             user['is_anonymous']=False
             login_user(user, remember=form.remember.data)
             next_page = request.args.get('next')
-            return redirect(next_page) if next_page else redirect(url_for('home'))
+            return redirect(next_page) if next_page else redirect(url_for('home_mongo'))
         else:
             flash('Login Unsuccessful. Please check email and password', 'danger')
     return render_template('login.html', title='Login', form=form)
